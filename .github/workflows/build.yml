@@ -1,0 +1,43 @@
+name: Build (Windows)
+
+# Authoritative Windows build for this .NET Framework 4.8 WinForms app.
+# A packages.config / old-style csproj solution cannot be built reliably
+# with `dotnet build` on Linux (Fody/Costura weaving, Shell32 COM reference
+# via tlbimp, .resx embedding), so the Release build runs on a real
+# Windows runner with Visual Studio's MSBuild + NuGet restore.
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Setup NuGet
+        uses: nuget/setup-nuget@v2
+
+      - name: Restore NuGet packages (packages.config)
+        run: nuget restore MHW_ModManager.sln
+
+      - name: Build solution (Release, Any CPU)
+        run: msbuild MHW_ModManager.sln /m /p:Configuration=Release /p:Platform="Any CPU"
+
+      - name: List Release output
+        shell: pwsh
+        run: Get-ChildItem -Recurse MHW_ModManager/bin/Release | Select-Object FullName, Length
+
+      - name: Upload Release output
+        uses: actions/upload-artifact@v4
+        with:
+          name: MHWModManager-Release
+          path: MHW_ModManager/bin/Release/
+          if-no-files-found: error
