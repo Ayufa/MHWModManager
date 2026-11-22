@@ -120,37 +120,42 @@ public static class ArchiveManager {
             // Link parents via a directory lookup built once. The original
             // used fileList.Find(...) per file -- O(n^2) on archives with
             // many files -- and appended synthetic parents while iterating.
-            var dirLookup = new Dictionary<string, ArchiveFile>();
+            //
+            // v1.47 tree fix: the parent chain is now built explicitly,
+            // segment by segment (EnsureFolderChain). The previous
+            // one-level lookup relied on Path.GetDirectoryName() plus
+            // re-processing synthetic parents, and on directory entries
+            // matching parentDir strings exactly (case-sensitive). If any
+            // level failed to link, that whole subtree never became a
+            // top-level-reachable node and the file hierarchy simply did
+            // not appear in the tree. Now EVERY intermediate folder is
+            // guaranteed to exist as a node in fileList (explicit archive
+            // directory entry when present, otherwise a synthesized one),
+            // every entry's parent points at a node that is itself in
+            // fileList, and folder identity is case-insensitive (one node
+            // per distinct folder path).
+            var dirLookup = new Dictionary<string, ArchiveFile>(StringComparer.OrdinalIgnoreCase);
             foreach (var file in fileList) {
-                if (file.isDir && !dirLookup.ContainsKey(file.directory))
-                    dirLookup.Add(file.directory, file);
+                file.modBelong = modInfo;
+                if (file.isDir && !dirLookup.ContainsKey(file.path))
+                    dirLookup.Add(file.path, file);
             }
 
-            // Collect synthetic parents first so we never modify fileList
-            // while enumerating it.
-            var pending = new List<ArchiveFile>(fileList);
-            for (int i = 0; i < pending.Count; i++) {
-                ArchiveFile file = pending[i];
-                file.modBelong = modInfo;
-
-                string parentDir = Path.GetDirectoryName(file.path);
+            // Snapshot: EnsureFolderChain appends synthesized folders to
+            // fileList while we iterate.
+            var entries = new List<ArchiveFile>(fileList);
+            foreach (var file in entries) {
+                string parentDir = ParentDirOf(file.path);
                 if (string.IsNullOrEmpty(parentDir))
                     continue;
 
-                ArchiveFile parent;
-                if (!dirLookup.TryGetValue(parentDir, out parent)) {
-                    parent = new ArchiveFile() {
-                        isDir = true,
-                        directory = parentDir,
-                        path = parentDir.FixSlashes()
-                    };
-                    dirLookup.Add(parentDir, parent);
-                    fileList.Add(parent);
-                    pending.Add(parent); // its own parent link is resolved too
-                }
+                ArchiveFile parent = EnsureFolderChain(parentDir, fileList, dirLookup, modInfo);
+                if (parent == null || parent == file)
+                    continue;
 
                 file.parent = parent;
-                parent.children.Add(file);
+                if (!parent.children.Contains(file))
+                    parent.children.Add(file);
             }
 
             // Directory sizes in ONE bottom-up pass: deepest directories
@@ -180,6 +185,49 @@ public static class ArchiveManager {
         return depth;
     }
 
+    // Parent folder of a slash-fixed archive path, computed by string
+    // position instead of Path.GetDirectoryName (whose result depends on
+    // the OS directory separator; archive paths are always '\'-separated
+    // after FixSlashes).
+    public static string ParentDirOf(string path) {
+        if (string.IsNullOrEmpty(path)) return "";
+        int idx = path.LastIndexOf('\\');
+        return idx < 0 ? "" : path.Substring(0, idx);
+    }
+
+    // Returns the folder node for `folderPath`, creating it -- and every
+    // missing ancestor above it -- when the archive has no explicit
+    // directory entry for it. Created folders are added to `fileList`
+    // (so they become part of mod.archiveFiles and of the tree) and are
+    // linked to their own parent before being returned, so the chain
+    // always terminates at a top-level folder with parent == null.
+    public static ArchiveFile EnsureFolderChain(string folderPath, List<ArchiveFile> fileList,
+        Dictionary<string, ArchiveFile> dirLookup, ModInfo modInfo) {
+        ArchiveFile folder;
+        if (dirLookup.TryGetValue(folderPath, out folder))
+            return folder;
+
+        folder = new ArchiveFile() {
+            isDir = true,
+            directory = folderPath,
+            path = folderPath,
+            modBelong = modInfo
+        };
+        dirLookup.Add(folderPath, folder);
+        fileList.Add(folder);
+
+        string parentDir = ParentDirOf(folderPath);
+        if (!string.IsNullOrEmpty(parentDir)) {
+            ArchiveFile parent = EnsureFolderChain(parentDir, fileList, dirLookup, modInfo);
+            if (parent != null && parent != folder) {
+                folder.parent = parent;
+                if (!parent.children.Contains(folder))
+                    parent.children.Add(folder);
+            }
+        }
+        return folder;
+    }
+
     // ------------------------------------------------------------------
     // Install
     // ------------------------------------------------------------------
@@ -200,7 +248,7 @@ public static class ArchiveManager {
         Func<ArchiveFile, int, int, OverwriteDecision> prompt) {
         try {
             if (!File.Exists(mod.modPath)) {
-                MainForm.AppendModLog("\nInstall Failed!\n     Mod archive not found!", Color.Crimson, true);
+                MainForm.AppendModLog(Lang.T("\nInstall Failed!\n     Mod archive not found!"), Color.Crimson, true);
                 return;
             }
 
@@ -345,17 +393,17 @@ public static class ArchiveManager {
                     MainForm.RefreshTreeView();
 
                     MainForm.instance.richBoxMod.AppendText("\n");
-                    MainForm.instance.richBoxMod.AppendText("Install Succesful!", Color.LawnGreen, true);
+                    MainForm.instance.richBoxMod.AppendText(Lang.T("Install Succesful!"), Color.LawnGreen, true);
                 });
             }
 
         } catch (OperationCanceledException) {
-            MainForm.AppendModLog("\nInstall Cancelled.", Color.Orange, true);
+            MainForm.AppendModLog(Lang.T("\nInstall Cancelled."), Color.Orange, true);
         } catch (Exception ex) {
             Console.WriteLine(ex);
 
             MainForm.AppendModLog("\n", Color.White, false);
-            MainForm.AppendModLog("Install Failed! Please copy and paste this error\n     and send it to the mod author please!", Color.Crimson, true);
+            MainForm.AppendModLog(Lang.T("Install Failed! Please copy and paste this error\n     and send it to the mod author please!"), Color.Crimson, true);
             MainForm.AppendModLog(ex.ToString(), Color.Salmon, true);
         }
     }
@@ -382,17 +430,18 @@ public static class ArchiveManager {
     public static OverwriteDecision ShowOverwriteDialog(ArchiveFile matchFile, int index, int fileCount,
         Dictionary<uint, List<ModInfo>> crcIndex) {
         InputBoxForm warnDialogue = new InputBoxForm();
-        warnDialogue.YesNoSetup($"Overwrite file? ({index} of {fileCount})", "");
+        warnDialogue.richTextBox1.WordWrap = true;
+        warnDialogue.YesNoSetup(Lang.F("Overwrite file? ({0} of {1})", index, fileCount), "");
 
         warnDialogue.richTextBox1.AppendText(matchFile.path, Color.Cyan, true);
         var actMods = matchFile.FindActualCrcMod(crcIndex);
         if (actMods.Count() > 0) {
-            warnDialogue.richTextBox1.AppendText($"The file is from:", Color.WhiteSmoke, true);
+            warnDialogue.richTextBox1.AppendText(Lang.T("The file is from:"), Color.WhiteSmoke, true);
             foreach (var rMod in actMods) {
                 warnDialogue.richTextBox1.AppendText(rMod.shortPath, Color.Orange, true);
             }
         } else {
-            warnDialogue.richTextBox1.AppendText($"It is unknown what mod this file belongs to.", Color.Coral, true);
+            warnDialogue.richTextBox1.AppendText(Lang.T("It is unknown what mod this file belongs to."), Color.Coral, true);
         }
 
         warnDialogue.richTextBox1.SelectAll();

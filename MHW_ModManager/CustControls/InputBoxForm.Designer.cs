@@ -83,9 +83,9 @@
             // 
             this.buttonCancel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this.buttonCancel.DialogResult = System.Windows.Forms.DialogResult.No;
-            this.buttonCancel.Location = new System.Drawing.Point(456, 89);
+            this.buttonCancel.Location = new System.Drawing.Point(436, 89);
             this.buttonCancel.Name = "buttonCancel";
-            this.buttonCancel.Size = new System.Drawing.Size(52, 23);
+            this.buttonCancel.Size = new System.Drawing.Size(72, 23);
             this.buttonCancel.TabIndex = 3;
             this.buttonCancel.Text = "Cancel";
             this.buttonCancel.UseVisualStyleBackColor = true;
@@ -94,9 +94,9 @@
             // 
             this.buttonOK.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this.buttonOK.DialogResult = System.Windows.Forms.DialogResult.Yes;
-            this.buttonOK.Location = new System.Drawing.Point(405, 89);
+            this.buttonOK.Location = new System.Drawing.Point(360, 89);
             this.buttonOK.Name = "buttonOK";
-            this.buttonOK.Size = new System.Drawing.Size(45, 23);
+            this.buttonOK.Size = new System.Drawing.Size(69, 23);
             this.buttonOK.TabIndex = 4;
             this.buttonOK.Text = "OK";
             this.buttonOK.UseVisualStyleBackColor = true;
@@ -183,9 +183,9 @@
             // 
             this.buttonNoAll.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.buttonNoAll.DialogResult = System.Windows.Forms.DialogResult.Ignore;
-            this.buttonNoAll.Location = new System.Drawing.Point(90, 89);
+            this.buttonNoAll.Location = new System.Drawing.Point(131, 89);
             this.buttonNoAll.Name = "buttonNoAll";
-            this.buttonNoAll.Size = new System.Drawing.Size(60, 23);
+            this.buttonNoAll.Size = new System.Drawing.Size(104, 23);
             this.buttonNoAll.TabIndex = 15;
             this.buttonNoAll.Text = "No to all";
             this.buttonNoAll.UseVisualStyleBackColor = true;
@@ -196,7 +196,7 @@
             this.buttonYesAll.DialogResult = System.Windows.Forms.DialogResult.OK;
             this.buttonYesAll.Location = new System.Drawing.Point(20, 89);
             this.buttonYesAll.Name = "buttonYesAll";
-            this.buttonYesAll.Size = new System.Drawing.Size(63, 23);
+            this.buttonYesAll.Size = new System.Drawing.Size(104, 23);
             this.buttonYesAll.TabIndex = 14;
             this.buttonYesAll.Text = "Yes to all";
             this.buttonYesAll.UseVisualStyleBackColor = true;

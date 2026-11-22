@@ -13,7 +13,12 @@ using System.Windows.Forms;
 public partial class InputBoxForm : Form {
     public InputBoxForm() {
         InitializeComponent();
-        CenterToScreen();        
+        // v1.47: Japanese-capable font + localized default button texts.
+        Lang.ApplyFont(this);
+        buttonYesAll.Text = Lang.T("Yes to all");
+        buttonNoAll.Text = Lang.T("No to all");
+        buttonCancel.Text = Lang.T("Cancel");
+        CenterToScreen();
     }
 
 
@@ -66,12 +71,18 @@ public partial class InputBoxForm : Form {
         isOpen = false;
     }
 
-    public void YesNoSetup(string title, string message, string yesText = "Yes", string NoText = "No") {
+    public void YesNoSetup(string title, string message, string yesText = null, string NoText = null) {
         TitleLabel.Text = title;
 
         labelGeneric.Height += 25;
-        labelGeneric.Visible = true;
+        // An empty message label used to stay visible on top of
+        // richTextBox1 (their bounds overlap in the designer); only show
+        // it when there is actually a message to display.
+        labelGeneric.Visible = !string.IsNullOrEmpty(message);
         labelGeneric.Text = message;
+
+        if (yesText == null) yesText = Lang.T("Yes");
+        if (NoText == null) NoText = Lang.T("No");
 
         buttonCancel.Text = NoText;
         buttonOK.Text = yesText;
@@ -103,7 +114,7 @@ public partial class InputBoxForm : Form {
         return wBox;
     }
 
-    public static bool WarningBox(string title, string message, string yesText = "Yes", string NoText = "No") {
+    public static bool WarningBox(string title, string message, string yesText = null, string NoText = null) {
         InputBoxForm wBox = new InputBoxForm();
         wBox.YesNoSetup(title, message, yesText, NoText);
 

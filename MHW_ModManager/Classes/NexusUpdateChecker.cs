@@ -30,10 +30,10 @@ public class NexusUpdateChecker {
             float versionNum = float.Parse(content);
 
             if(versionNum <= MainForm.instance.modsData.version) {
-                MainForm.instance.linkNewUpdate.Text = "You Have the Latest Version";
+                MainForm.instance.linkNewUpdate.Text = Lang.T("You Have the Latest Version");
                 MainForm.instance.linkNewUpdate.LinkColor = System.Drawing.Color.LawnGreen;
             } else {
-                MainForm.instance.linkNewUpdate.Text = $"New Update V{versionNum} Available!";
+                MainForm.instance.linkNewUpdate.Text = Lang.S($"New Update V{versionNum} Available!", $"新しい更新 V{versionNum} があります！");
             }
             MainForm.instance.linkNewUpdate.Visible = true;
 
@@ -41,7 +41,7 @@ public class NexusUpdateChecker {
             Console.WriteLine("LocalVersion: " + MainForm.programVersion);
         } catch (Exception ex){
             Console.WriteLine("UpdateCheckFailed\n" + ex.Message);
-            MainForm.instance.linkNewUpdate.Text = "Check For Updates";
+            MainForm.instance.linkNewUpdate.Text = Lang.T("Check For Updates");
             MainForm.instance.linkNewUpdate.LinkColor = System.Drawing.Color.PaleTurquoise;
             MainForm.instance.linkNewUpdate.Visible = true;
         }

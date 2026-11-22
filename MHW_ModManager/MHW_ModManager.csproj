@@ -53,6 +53,7 @@
   </PropertyGroup>
   <PropertyGroup>
     <ApplicationIcon>Misc\icon2.ico</ApplicationIcon>
+    <ApplicationManifest>Misc\app.manifest</ApplicationManifest>
   </PropertyGroup>
   <PropertyGroup>
     <SignManifests>false</SignManifests>
@@ -248,6 +249,7 @@
     <Compile Include="Classes\ArchiveFile.cs" />
     <Compile Include="Classes\ArchiveManager.cs" />
     <Compile Include="Classes\CrcCache.cs" />
+    <Compile Include="Classes\Lang.cs" />
     <Compile Include="Classes\OperationProgress.cs" />
     <Compile Include="Classes\LoadoutManager.cs" />
     <Compile Include="Classes\NexusUpdateChecker.cs" />

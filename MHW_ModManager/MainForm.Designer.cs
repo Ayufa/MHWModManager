@@ -64,6 +64,8 @@
             this.panel3 = new System.Windows.Forms.Panel();
             this.buttonLoadLoadout = new System.Windows.Forms.Button();
             this.buttonSaveLoadout = new System.Windows.Forms.Button();
+            this.labelLanguage = new System.Windows.Forms.Label();
+            this.comboBoxLanguage = new System.Windows.Forms.ComboBox();
             this.checkBoxIgnoreTopFiles = new System.Windows.Forms.CheckBox();
             this.textBoxModFolder = new System.Windows.Forms.TextBox();
             this.label1 = new System.Windows.Forms.Label();
@@ -172,7 +174,7 @@
             this.olvColumnInstalled.AspectName = "intalledText";
             this.olvColumnInstalled.CellPadding = null;
             this.olvColumnInstalled.Text = "Status";
-            this.olvColumnInstalled.Width = 110;
+            this.olvColumnInstalled.Width = 150;
             // 
             // olvColumnSize
             // 
@@ -348,7 +350,7 @@
             this.treeViewFiles.ForeColor = System.Drawing.Color.WhiteSmoke;
             this.treeViewFiles.FullRowSelect = true;
             this.treeViewFiles.HideSelection = false;
-            this.treeViewFiles.Location = new System.Drawing.Point(0, 21);
+            this.treeViewFiles.Location = new System.Drawing.Point(0, 24);
             this.treeViewFiles.Name = "treeViewFiles";
             this.treeViewFiles.ShowNodeToolTips = true;
             this.treeViewFiles.Size = new System.Drawing.Size(446, 635);
@@ -407,7 +409,7 @@
             this.labelSelectedMod.Font = new System.Drawing.Font("Microsoft Sans Serif", 11F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.labelSelectedMod.Location = new System.Drawing.Point(0, 0);
             this.labelSelectedMod.Name = "labelSelectedMod";
-            this.labelSelectedMod.Size = new System.Drawing.Size(446, 21);
+            this.labelSelectedMod.Size = new System.Drawing.Size(446, 24);
             this.labelSelectedMod.TabIndex = 1;
             this.labelSelectedMod.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
@@ -441,10 +443,10 @@
             this.richBoxMod.Cursor = System.Windows.Forms.Cursors.Default;
             this.richBoxMod.DetectUrls = false;
             this.richBoxMod.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.richBoxMod.Font = new System.Drawing.Font("Century Gothic", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.richBoxMod.Font = new System.Drawing.Font("Yu Gothic UI", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.richBoxMod.ForeColor = System.Drawing.Color.WhiteSmoke;
             this.richBoxMod.HideSelection = false;
-            this.richBoxMod.Location = new System.Drawing.Point(0, 24);
+            this.richBoxMod.Location = new System.Drawing.Point(0, 27);
             this.richBoxMod.Margin = new System.Windows.Forms.Padding(20);
             this.richBoxMod.Name = "richBoxMod";
             this.richBoxMod.ReadOnly = true;
@@ -460,7 +462,7 @@
             this.label3.Font = new System.Drawing.Font("Microsoft Sans Serif", 13F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.label3.Location = new System.Drawing.Point(0, 0);
             this.label3.Name = "label3";
-            this.label3.Size = new System.Drawing.Size(371, 24);
+            this.label3.Size = new System.Drawing.Size(371, 27);
             this.label3.TabIndex = 0;
             this.label3.Text = "Mod Archive Info:";
             this.label3.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
@@ -515,10 +517,10 @@
             this.richBoxFile.Cursor = System.Windows.Forms.Cursors.Default;
             this.richBoxFile.DetectUrls = false;
             this.richBoxFile.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.richBoxFile.Font = new System.Drawing.Font("Century Gothic", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.richBoxFile.Font = new System.Drawing.Font("Yu Gothic UI", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.richBoxFile.ForeColor = System.Drawing.Color.WhiteSmoke;
             this.richBoxFile.HideSelection = false;
-            this.richBoxFile.Location = new System.Drawing.Point(0, 24);
+            this.richBoxFile.Location = new System.Drawing.Point(0, 27);
             this.richBoxFile.Margin = new System.Windows.Forms.Padding(20);
             this.richBoxFile.Name = "richBoxFile";
             this.richBoxFile.ReadOnly = true;
@@ -534,7 +536,7 @@
             this.label4.Font = new System.Drawing.Font("Microsoft Sans Serif", 13F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.label4.Location = new System.Drawing.Point(0, 0);
             this.label4.Name = "label4";
-            this.label4.Size = new System.Drawing.Size(371, 24);
+            this.label4.Size = new System.Drawing.Size(371, 27);
             this.label4.TabIndex = 1;
             this.label4.Text = "Archive File Info:";
             this.label4.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
@@ -553,10 +555,12 @@
             // textBoxGameDir
             // 
             this.textBoxGameDir.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.textBoxGameDir.Location = new System.Drawing.Point(144, 2);
+            this.textBoxGameDir.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.textBoxGameDir.Location = new System.Drawing.Point(156, 2);
             this.textBoxGameDir.Margin = new System.Windows.Forms.Padding(5);
             this.textBoxGameDir.Name = "textBoxGameDir";
-            this.textBoxGameDir.Size = new System.Drawing.Size(2296, 23);
+            this.textBoxGameDir.Size = new System.Drawing.Size(1311, 23);
             this.textBoxGameDir.TabIndex = 2;
             this.textBoxGameDir.TextChanged += new System.EventHandler(this.textBoxGameDir_TextChanged);
             // 
@@ -565,7 +569,7 @@
             this.panel2.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.panel2.Controls.Add(this.labelGameDirExists);
             this.panel2.ForeColor = System.Drawing.Color.Tomato;
-            this.panel2.Location = new System.Drawing.Point(111, 0);
+            this.panel2.Location = new System.Drawing.Point(124, 0);
             this.panel2.Name = "panel2";
             this.panel2.Size = new System.Drawing.Size(26, 26);
             this.panel2.TabIndex = 1;
@@ -596,6 +600,8 @@
             // 
             this.panel3.Controls.Add(this.buttonLoadLoadout);
             this.panel3.Controls.Add(this.buttonSaveLoadout);
+            this.panel3.Controls.Add(this.labelLanguage);
+            this.panel3.Controls.Add(this.comboBoxLanguage);
             this.panel3.Controls.Add(this.checkBoxIgnoreTopFiles);
             this.panel3.Controls.Add(this.textBoxModFolder);
             this.panel3.Controls.Add(this.label1);
@@ -679,6 +685,30 @@
             this.label1.Size = new System.Drawing.Size(83, 17);
             this.label1.TabIndex = 3;
             this.label1.Text = "Mod Folder:";
+            // 
+            // labelLanguage
+            // 
+            this.labelLanguage.AutoSize = true;
+            this.labelLanguage.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.labelLanguage.Location = new System.Drawing.Point(730, 3);
+            this.labelLanguage.Name = "labelLanguage";
+            this.labelLanguage.Size = new System.Drawing.Size(70, 17);
+            this.labelLanguage.TabIndex = 7;
+            this.labelLanguage.Text = "Language:";
+            // 
+            // comboBoxLanguage
+            // 
+            this.comboBoxLanguage.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.comboBoxLanguage.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.comboBoxLanguage.FormattingEnabled = true;
+            this.comboBoxLanguage.Items.AddRange(new object[] {
+            "English",
+            "日本語"});
+            this.comboBoxLanguage.Location = new System.Drawing.Point(806, 0);
+            this.comboBoxLanguage.Name = "comboBoxLanguage";
+            this.comboBoxLanguage.Size = new System.Drawing.Size(121, 24);
+            this.comboBoxLanguage.TabIndex = 8;
+            this.comboBoxLanguage.SelectedIndexChanged += new System.EventHandler(this.comboBoxLanguage_SelectedIndexChanged);
             // 
             // tip
             // 
@@ -822,6 +852,7 @@
             this.labelProgress.Location = new System.Drawing.Point(0, 0);
             this.labelProgress.Name = "labelProgress";
             this.labelProgress.Size = new System.Drawing.Size(500, 28);
+            this.labelProgress.AutoEllipsis = true;
             this.labelProgress.TabIndex = 1;
             this.labelProgress.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
@@ -851,6 +882,7 @@
             this.DoubleBuffered = true;
             this.ForeColor = System.Drawing.Color.WhiteSmoke;
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
+            this.MinimumSize = new System.Drawing.Size(1000, 650);
             this.Name = "MainForm";
             this.Padding = new System.Windows.Forms.Padding(3);
             this.Text = "MHW Mod Manager";
@@ -941,6 +973,8 @@
     public System.Windows.Forms.LinkLabel linkNewUpdate;
     private System.Windows.Forms.Button buttonSaveLoadout;
     private System.Windows.Forms.Button buttonLoadLoadout;
+    private System.Windows.Forms.Label labelLanguage;
+    private System.Windows.Forms.ComboBox comboBoxLanguage;
     public System.Windows.Forms.LinkLabel linkCredits;
 }
 

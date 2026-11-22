@@ -11,7 +11,7 @@ public class LoadoutManager {
 
     static ModsData modsData => MainForm.instance.modsData;
 
-    const string selectDialogFilter = "Mod Loadout File (.mlf)|*.mlf";
+    static string selectDialogFilter => Lang.T("Mod Loadout File (.mlf)") + "|*.mlf";
 
     public static void SaveLoadout() {
 
@@ -22,7 +22,7 @@ public class LoadoutManager {
 
         SaveFileDialog fileDialog = new SaveFileDialog() {
             InitialDirectory = string.IsNullOrEmpty(modsData.lastSaveDialoguePath) ? Serializer.GetMMDataFolder() : modsData.lastSaveDialoguePath,
-            Title = "Input Mod Loadout Save Location",
+            Title = Lang.T("Input Mod Loadout Save Location"),
             ValidateNames = true, AddExtension = true, FileName = "ModLoadout", Filter = selectDialogFilter
         };
 
@@ -100,14 +100,14 @@ public class LoadoutManager {
                 //Console.WriteLine($"{mod.modName}: {mod.intalledText}");
 
                 if (!loadMod.archiveExists) {
-                    issues.Add($"Couldnt Find: {loadMod.shortPath}");
+                    issues.Add(Lang.F("Couldnt Find: {0}", loadMod.shortPath));
                     continue;
                 }
 
                 ModInfo matchingMod = modsData.modInfos.Find(realMod => realMod.modName == loadMod.modName);
 
                 if (!matchingMod) {
-                    issues.Add($"Archive Not Loaded: {loadMod.modPath}");
+                    issues.Add(Lang.F("Archive Not Loaded: {0}", loadMod.modPath));
                     continue;
                 }
 
@@ -130,22 +130,29 @@ public class LoadoutManager {
             IEnumerable<ModInfo> newlyAddedMods = modsData.modInfos.Where(mod => !loadoutData.modInfos.Find(loadmod => loadmod.modName == mod.modName));
 
             if (newlyAddedMods.Count() > 0) {
-                InputBoxForm watDoBox = InputBoxForm.OKBOX("New Files Were Added!", "", "Uninstall New Mods");
+                InputBoxForm watDoBox = InputBoxForm.OKBOX(Lang.T("New Files Were Added!"), "", Lang.T("Uninstall New Mods"));
                 watDoBox.TitleLabel.ForeColor = Color.LightYellow;
                 watDoBox.buttonClose.Visible = false;
 
-                watDoBox.richTextBox1.AppendText("\nSince this loadout was created, new mod archives have been added.\nWhat would you like to do about this?");
+                watDoBox.richTextBox1.AppendText(Lang.T("\nSince this loadout was created, new mod archives have been added.\nWhat would you like to do about this?"));
                 watDoBox.richTextBox1.CenterText();
 
                 watDoBox.buttonCancel.Width += 50;
                 watDoBox.buttonCancel.Left -= 50;
+                if (Lang.Japanese) {
+                    // The Japanese OK text ("新しいMODをアンインストール")
+                    // is wider than the English one; give it room instead
+                    // of letting it clip.
+                    watDoBox.buttonCancel.Width += 55;
+                    watDoBox.buttonCancel.Left -= 55;
+                }
 
-                watDoBox.buttonNoAll.Text = "Leave As Is";
+                watDoBox.buttonNoAll.Text = Lang.T("Leave As Is");
                 watDoBox.buttonNoAll.Visible = true;
                 watDoBox.buttonNoAll.Width += 45;
                 watDoBox.buttonNoAll.Left = watDoBox.buttonCancel.Left - watDoBox.buttonNoAll.Width - 10;
 
-                watDoBox.checkBoxGeneric1.Text = "Update Loadout With Changes";
+                watDoBox.checkBoxGeneric1.Text = Lang.T("Update Loadout With Changes");
                 watDoBox.checkBoxGeneric1.Visible = true;
                 watDoBox.checkBoxGeneric1.Checked = true;
                 watDoBox.checkBoxGeneric1.Top = watDoBox.buttonNoAll.Top + 5;
@@ -173,9 +180,9 @@ public class LoadoutManager {
             InputBoxForm infoBox;
 
             if (issues.Count > 0) {
-                infoBox = InputBoxForm.OKBOX("Completed With Warnings", "");
+                infoBox = InputBoxForm.OKBOX(Lang.T("Completed With Warnings"), "");
                 infoBox.TitleLabel.ForeColor = Color.Orange;
-                infoBox.richTextBox1.AppendText("The loadout was restored but there were some issues.\n\n");
+                infoBox.richTextBox1.AppendText(Lang.T("The loadout was restored but there were some issues.\n\n"));
 
                 infoBox.Height += 100;
                 infoBox.richTextBox1.Height += 95;
@@ -184,14 +191,14 @@ public class LoadoutManager {
                     infoBox.richTextBox1.AppendText(issue, Color.LightYellow, true);
                 }
 
-                infoBox.checkBoxGeneric1.Text = "Update Loadout With These Removed";
+                infoBox.checkBoxGeneric1.Text = Lang.T("Update Loadout With These Removed");
                 infoBox.checkBoxGeneric1.Visible = true;
                 infoBox.checkBoxGeneric1.Top = infoBox.buttonNoAll.Top + 5;
                 infoBox.checkBoxGeneric1.Left = 10;
             } else {
-                infoBox = InputBoxForm.OKBOX("Success", "");
+                infoBox = InputBoxForm.OKBOX(Lang.T("Success"), "");
                 infoBox.TitleLabel.ForeColor = Color.PaleGreen;
-                infoBox.richTextBox1.AppendText("\nMod loadout state succesfully restored.", Color.LawnGreen, true);
+                infoBox.richTextBox1.AppendText(Lang.T("\nMod loadout state succesfully restored."), Color.LawnGreen, true);
             }
 
             infoBox.richTextBox1.CenterText();
@@ -206,9 +213,9 @@ public class LoadoutManager {
             MainForm.RefreshTreeView();
 
         } catch (Exception ex) {
-            InputBoxForm successBox = InputBoxForm.OKBOX("Failure", "");
-            successBox.richTextBox1.AppendText("An error occured while trying to restore your mod loadout.", Color.Salmon, true);
-            successBox.richTextBox1.AppendText("Heres the error:\n\n");
+            InputBoxForm successBox = InputBoxForm.OKBOX(Lang.T("Failure"), "");
+            successBox.richTextBox1.AppendText(Lang.T("An error occured while trying to restore your mod loadout."), Color.Salmon, true);
+            successBox.richTextBox1.AppendText(Lang.T("Heres the error:\n\n"));
             successBox.richTextBox1.CenterText();
 
             successBox.richTextBox1.AppendText(ex.ToString());

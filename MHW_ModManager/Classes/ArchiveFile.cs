@@ -135,6 +135,7 @@ public class ArchiveFile {
             } else {
                 foreach (var otherMod in modsData.modInfos) {
                     if (otherMod == modBelong) continue;
+                    if (otherMod.archiveFiles == null) continue;
 
                     if (otherMod.archiveFiles.Any(file => !file.isDir && (!file.isTopFile || modsData.useTopLevelFiles) && file.installedPath.ToLower() == installedPath.ToLower())) {
                         sameMods.Add(otherMod);
@@ -160,22 +161,22 @@ public class ArchiveFile {
             return crcIndex.TryGetValue(installedCRC, out hits) ? hits : (IEnumerable<ModInfo>)new ModInfo[0];
         }
 
-        return modsData.modInfos.Where(mod => mod.archiveFiles.Any(file => file.crc == installedCRC));
+        return modsData.modInfos.Where(mod => mod.archiveFiles != null && mod.archiveFiles.Any(file => file.crc == installedCRC));
     }
 
     public void SetInfo(RichTextBox textBox, TreeNode node) {
         textBox.Clear();
 
-        textBox.AppendText("Path: "); textBox.AppendText(path, node.ForeColor, true);
-        textBox.AppendText("Status: " + node.ToolTipText, Color.WhiteSmoke, true);
-        textBox.AppendText("Install Location: "); textBox.AppendText(installedPath, Color.LightYellow, true);
-        textBox.AppendText("Size: "); textBox.AppendText(sizeSuffixed, Color.AliceBlue, true);
+        textBox.AppendText(Lang.T("Path: ")); textBox.AppendText(path, node.ForeColor, true);
+        textBox.AppendText(Lang.T("Status: ") + node.ToolTipText, Color.WhiteSmoke, true);
+        textBox.AppendText(Lang.T("Install Location: ")); textBox.AppendText(installedPath, Color.LightYellow, true);
+        textBox.AppendText(Lang.T("Size: ")); textBox.AppendText(sizeSuffixed, Color.AliceBlue, true);
 
         if (!isDir) {
             textBox.AppendText("CRC: "); textBox.AppendText(crc.ToString("X"), Color.Cyan, true);
 
             if (installedNotMatching) {
-                textBox.AppendText("Installed CRC: "); textBox.AppendText(installedCRC.ToString("X"), node.ForeColor, true);
+                textBox.AppendText(Lang.T("Installed CRC: ")); textBox.AppendText(installedCRC.ToString("X"), node.ForeColor, true);
             }
 
         }
@@ -184,7 +185,7 @@ public class ArchiveFile {
         var actMods = FindActualCrcMod();
         if (actMods != null && actMods.Count() > 0) {
             string plural = actMods.Count() > 1 ? "s" : "";
-            textBox.AppendText($"Mod{plural} that this file is from:", Color.WhiteSmoke, true);
+            textBox.AppendText(Lang.S($"Mod{plural} that this file is from:", "このファイルの出所MOD:"), Color.WhiteSmoke, true);
             foreach (var mod in actMods) {
                 textBox.AppendText("    " + mod.shortPath, Color.Coral, true);
             }
@@ -193,7 +194,7 @@ public class ArchiveFile {
 
         var sameMods = FindModsWithSameFile().Distinct();
         if (sameMods.Count() > 0) {
-            textBox.AppendText("Mods that also change this file: \n");
+            textBox.AppendText(Lang.T("Mods that also change this file: \n"));
 
             foreach (var mod in sameMods) {
                 textBox.AppendText("    " + mod.shortPath, Color.Orange, true);

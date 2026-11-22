@@ -17,7 +17,7 @@ using System.Runtime.InteropServices;
 public partial class MainForm : Form {
 
 
-    public const float programVersion = 1.46f;
+    public const float programVersion = 1.47f;
 
     public static MainForm instance;
     public ModsData modsData;
@@ -56,10 +56,10 @@ public partial class MainForm : Form {
         try {
             await Task.Run(() => work(progress, opCts.Token));
         } catch (OperationCanceledException) {
-            AppendModLog(operationName + " cancelled.", Color.Orange, true);
+            AppendModLog(Lang.F("{0} cancelled.", Lang.T(operationName)), Color.Orange, true);
         } catch (Exception ex) {
             Console.WriteLine(ex);
-            AppendModLog(operationName + " failed: " + ex.Message, Color.Crimson, true);
+            AppendModLog(Lang.F("{0} failed: {1}", Lang.T(operationName), ex.Message), Color.Crimson, true);
         } finally {
             SetOperationUi(operationName, false);
             opRunning = false;
@@ -78,15 +78,15 @@ public partial class MainForm : Form {
         progressBarOperation.Maximum = Math.Max(1, value.FilesTotal);
         progressBarOperation.Value = Math.Min(progressBarOperation.Maximum, value.FilesDone);
         labelProgress.Text = value.FilesTotal > 0
-            ? $"{value.Operation}: {value.FilesDone} / {value.FilesTotal} files  {value.CurrentFile}"
-            : $"{value.Operation}: {value.CurrentFile}";
+            ? Lang.F("{0}: {1} / {2} files  {3}", Lang.T(value.Operation), value.FilesDone, value.FilesTotal, value.CurrentFile)
+            : Lang.F("{0}: {1}", Lang.T(value.Operation), value.CurrentFile);
     }
 
     void SetOperationUi(string operationName, bool running) {
         panelProgress.Visible = running;
         if (running) {
             progressBarOperation.Value = 0;
-            labelProgress.Text = operationName + "...";
+            labelProgress.Text = Lang.T(operationName) + "...";
         }
         buttonInstallSelected.Enabled = !running;
         buttonUninstallSelected.Enabled = !running;
@@ -111,7 +111,81 @@ public partial class MainForm : Form {
     public MainForm() {
         instance = this;
         InitializeComponent();
+        // v1.47: one font family that renders English and Japanese with
+        // the same metrics, applied to every control (and the context
+        // menu, which is not part of the control tree).
+        Lang.ApplyFont(this);
+        contextList.Font = new Font("Yu Gothic UI", 9F);
+        CaptureOriginalToolTips();
         Init();
+        ApplyLanguage();
+    }
+
+    // Original (English) tooltip texts, captured before the first
+    // ApplyLanguage() so language switches can always translate from the
+    // English source instead of stacking translations.
+    readonly Dictionary<Control, string> originalToolTips = new Dictionary<Control, string>();
+    void CaptureOriginalToolTips() {
+        foreach (var c in new Control[] { buttonRescanCache, buttonRescanInstall, buttonDeleteNotFound, checkBoxIgnoreTopFiles, buttonSaveLoadout, buttonLoadLoadout }) {
+            string t = tip.GetToolTip(c);
+            if (!string.IsNullOrEmpty(t)) originalToolTips[c] = t;
+        }
+    }
+
+    bool langSwitching;
+    private void comboBoxLanguage_SelectedIndexChanged(object sender, EventArgs e) {
+        if (langSwitching) return;
+        Lang.SetJapanese(comboBoxLanguage.SelectedIndex == 1);
+        ApplyLanguage();
+        RefreshListView();
+        RefreshTreeView();
+    }
+
+    // Applies the current Lang choice to every user-visible string on
+    // this form. Called at startup and on every language switch; no
+    // restart is required.
+    void ApplyLanguage() {
+        langSwitching = true;
+        try {
+            comboBoxLanguage.SelectedIndex = Lang.Japanese ? 1 : 0;
+        } finally { langSwitching = false; }
+
+        labelLanguage.Text = Lang.T("Language:");
+        label2.Text = Lang.T("Game Directory:");
+        label1.Text = Lang.T("Mod Folder:");
+        checkBoxIgnoreTopFiles.Text = Lang.T("Ignore Top-Level Files");
+        buttonSaveLoadout.Text = Lang.T("Save Loadout");
+        buttonLoadLoadout.Text = Lang.T("Load Loadout");
+
+        olvColumnName.Text = Lang.T("Name");
+        olvColumnInstalled.Text = Lang.T("Status");
+        olvColumnSize.Text = Lang.T("Size");
+        olvColumnDate.Text = Lang.T("Date Created");
+        olvColumnCat.Text = Lang.T("Category");
+        olvModList.EmptyListMsg = Lang.T("Drag mod archives here or place them in folders and hit rescan cache to add them to mod cache.");
+
+        deleteModArchiveToolStripMenuItem.Text = Lang.T("Delete Mod Archive And Uninstall");
+        deleteModArchiveWithoutUninstallingToolStripMenuItem.Text = Lang.T("Delete Mod Archive Without Uninstalling");
+        installAllFilesToolStripMenuItem.Text = Lang.T("Install ALL Files");
+        uninstallAllFilesToolStripMenuItem.Text = Lang.T("Uninstall ALL Files");
+        openLocationToolStripMenuItem.Text = Lang.T("Open Location");
+        reloadArchiveToolStripMenuItem.Text = Lang.T("Reload Archive");
+
+        buttonRescanCache.Text = Lang.T("Re-Scan Cache");
+        buttonDeleteNotFound.Text = Lang.T("Remove Missing Archives");
+        buttonRescanInstall.Text = Lang.T("Re-Scan Installations");
+        buttonCheckAll.Text = Lang.T("Check All Files");
+        buttonUncheckAll.Text = Lang.T("Uncheck All Files");
+        label3.Text = Lang.T("Mod Archive Info:");
+        label4.Text = Lang.T("Archive File Info:");
+        buttonInstallSelected.Text = Lang.T("Install Selected Files");
+        buttonUninstallSelected.Text = Lang.T("Uninstall Selected Files");
+        buttonCancelOperation.Text = Lang.T("Cancel");
+        if (linkNewUpdate.Visible && (linkNewUpdate.Text == "New Update Available!" || linkNewUpdate.Text == "新しい更新があります！"))
+            linkNewUpdate.Text = Lang.T("New Update Available!");
+
+        foreach (var pair in originalToolTips)
+            tip.SetToolTip(pair.Key, Lang.T(pair.Value));
     }
 
 
@@ -157,6 +231,9 @@ public partial class MainForm : Form {
         RefreshListView();
 
         GetSelectedMod();
+        // Build the hierarchy for the initially selected mod explicitly;
+        // previously this only happened if ItemSelectionChanged fired.
+        RefreshTreeView();
         olvModList.Focus();
     }
 
@@ -203,56 +280,72 @@ public partial class MainForm : Form {
     }
 
     public static void RefreshTreeView() {
-        instance.treeViewFiles.BeginUpdate();
+        // v1.47 tree fix: the original code called BeginUpdate() and then
+        // had several ways to never reach EndUpdate() -- an early
+        // `if (!selMod) return;` and any exception from SetInfo /
+        // RecurseTreeView / the Check* passes (e.g. a mod in the list
+        // whose archiveFiles is null after a failed parse). Each of those
+        // left the TreeView cleared AND update-locked, so selecting a mod
+        // showed no file hierarchy at all. Now EndUpdate() is guaranteed
+        // (finally), the info pane and the status pass are individually
+        // guarded, and a null archive list is handled.
+        var tree = instance.treeViewFiles;
+        tree.BeginUpdate();
+        try {
+            tree.Nodes.Clear();
 
-        instance.treeViewFiles.Nodes.Clear();
+            ModInfo selMod = instance.GetSelectedMod();
+            if (!selMod) return;
 
-        ModInfo selMod = instance.GetSelectedMod();
-        if (!selMod) return;
+            instance.labelSelectedMod.Text = selMod.modName;
 
-        instance.labelSelectedMod.Text = selMod.modName;
+            try { selMod.SetInfo(instance.richBoxMod); } catch (Exception ex) { Console.WriteLine(ex); }
 
-        selMod.SetInfo(instance.richBoxMod);
+            if (selMod.archiveFiles == null) return;
 
-        var topFiles = selMod.archiveFiles.Where(x => !x.parent);
-        foreach (ArchiveFile file in topFiles) {
-            RecurseTreeView(file);
-        }
-
-        foreach (ArchiveFile file in selMod.archiveFiles) {
-            if (!file.isDir && file.installed) {
-
+            var topFiles = selMod.archiveFiles.Where(x => !x.parent).ToArray();
+            var visited = new HashSet<ArchiveFile>();
+            foreach (ArchiveFile file in topFiles) {
+                RecurseTreeView(file, null, visited);
             }
-        }
 
-        if (selMod.installed || selMod.partiallyInstalled) {
-            CheckTreeFilesInstalled(topFiles);
-        } else {
-            CheckTreeFilesNotInstalled(topFiles);
+            try {
+                if (selMod.installed || selMod.partiallyInstalled) {
+                    CheckTreeFilesInstalled(topFiles);
+                } else {
+                    CheckTreeFilesNotInstalled(topFiles);
+                }
+            } catch (Exception ex) { Console.WriteLine(ex); }
+        } catch (Exception ex) {
+            Console.WriteLine(ex);
+        } finally {
+            tree.EndUpdate();
         }
-
-        instance.treeViewFiles.EndUpdate();
     }
 
     static void CheckTreeFilesInstalled(IEnumerable<ArchiveFile> topFiles) {
         foreach (var file in topFiles) {
+            // A file that is not reachable from the tree roots has no node;
+            // skip its styling instead of throwing (which used to abort
+            // the whole RefreshTreeView between Begin/EndUpdate).
+            if (file.belongingNode == null) { CheckTreeFilesInstalled(file.children); continue; }
             file.belongingNode.Checked = file.GetInstalledStatus();
             if (!file.isDir && file.isTopFile && !instance.modsData.useTopLevelFiles) {
                 file.belongingNode.ForeColor = Color.DarkGray;
-                file.belongingNode.ToolTipText = "Ignored because it is a top-level file and the \"ignore top-level files\" option is on.";
+                file.belongingNode.ToolTipText = Lang.T("Ignored because it is a top-level file and the \"ignore top-level files\" option is on.");
 
             } else if (file.installed) {
                 if (file.installedNotMatching) {
                     file.belongingNode.ForeColor = Color.Orange;
-                    file.belongingNode.ToolTipText = "The file exists in the folder but it is not from this mod. (Checksums don't match)\n" +
-                        "   Select this file to see what mod the file actually belongs to.";
+                    file.belongingNode.ToolTipText = Lang.T("The file exists in the folder but it is not from this mod. (Checksums don't match)\n" +
+                        "   Select this file to see what mod the file actually belongs to.");
                 } else {
                     file.belongingNode.ForeColor = Color.LawnGreen;
-                    file.belongingNode.ToolTipText = "This file is installed in the folder and the checksum matches this mod.";
+                    file.belongingNode.ToolTipText = Lang.T("This file is installed in the folder and the checksum matches this mod.");
                 }
             } else {
                 file.belongingNode.ForeColor = Color.LightYellow;
-                file.belongingNode.ToolTipText = "This file isn't found at all in the folder.";
+                file.belongingNode.ToolTipText = Lang.T("This file isn't found at all in the folder.");
             }
             CheckTreeFilesInstalled(file.children);
         }
@@ -260,16 +353,17 @@ public partial class MainForm : Form {
 
     static void CheckTreeFilesNotInstalled(IEnumerable<ArchiveFile> topFiles) {
         foreach (var file in topFiles) {
+            if (file.belongingNode == null) { CheckTreeFilesNotInstalled(file.children); continue; }
             file.belongingNode.Checked = instance.modsData.useTopLevelFiles || !file.isTopFile;
             if (!file.isDir && File.Exists(file.installedPath)) {
-                file.belongingNode.ToolTipText = "File exists from another mod.";
+                file.belongingNode.ToolTipText = Lang.T("File exists from another mod.");
                 file.belongingNode.ForeColor = Color.Coral;
             } else {
                 if (file.belongingNode.Checked) {
-                    file.belongingNode.ToolTipText = "File does not exist in the mod folder and is ready to be installed.";
+                    file.belongingNode.ToolTipText = Lang.T("File does not exist in the mod folder and is ready to be installed.");
                     file.belongingNode.ForeColor = Color.WhiteSmoke;
                 } else {
-                    file.belongingNode.ToolTipText = "File is ignored because it is a top-level file and the \"ignore top-level files\" option is on.";
+                    file.belongingNode.ToolTipText = Lang.T("File is ignored because it is a top-level file and the \"ignore top-level files\" option is on.");
                     file.belongingNode.ForeColor = Color.DarkGray;
                 }
             }
@@ -278,20 +372,25 @@ public partial class MainForm : Form {
         }
     }
 
-    static void RecurseTreeView(ArchiveFile pFile, TreeNode pNode = null) {
+    static void RecurseTreeView(ArchiveFile pFile, TreeNode pNode = null, HashSet<ArchiveFile> visited = null) {
+        // Cycle/duplicate guard: parent/children graphs loaded from old
+        // save data could revisit a node; never recurse forever.
+        if (visited != null && !visited.Add(pFile)) return;
+
         TreeNode node = new TreeNode(Path.GetFileName(pFile.path));
         pFile.belongingNode = node;
 
         if (pNode == null) {
-            pFile.GetInstalled();
+            // One unreadable installed file must not blank the whole
+            // tree: guard the status probe per root node.
+            try { pFile.GetInstalled(); } catch (Exception ex) { Console.WriteLine(ex); }
             instance.treeViewFiles.Nodes.Add(node);
         } else {
             pNode.Nodes.Add(node);
         }
 
         foreach (ArchiveFile childFile in pFile.children) {
-            //Console.WriteLine($"{pFile.path} -> {childFile.path}");
-            RecurseTreeView(childFile, node);
+            RecurseTreeView(childFile, node, visited);
         }
 
         node.Expand();
@@ -597,7 +696,7 @@ public partial class MainForm : Form {
         credBox.richTextBox1.Height += 20;
         credBox.Height += 25;
 
-        credBox.richTextBox1.Font = new Font("Microsoft Sans Serif", 12);
+        credBox.richTextBox1.Font = new Font("Yu Gothic UI", 12);
         credBox.panelBG.BorderStyle = BorderStyle.Fixed3D;
 
         credBox.richTextBox1.AppendText("BoltMan: Project Creator", Color.MediumSlateBlue, true);

@@ -54,8 +54,11 @@ public class ModInfo {
     }
 
     public string gameModDir => $"{modsData.gameDir.FixSlashes()}\\{modsData.modDir}";
-    public bool installed => archiveFiles.All(x => x.GetInstalledStatus() || (!modsData.useTopLevelFiles && x.isTopFile));
-    public bool partiallyInstalled => !installed && archiveFiles.Any(x => x.GetInstalledStatus());
+    // Null-guarded (v1.47): a mod whose archive failed to parse can sit in
+    // the list with archiveFiles == null; the unguarded getters used to
+    // throw inside RefreshTreeView and leave the file tree blank.
+    public bool installed => archiveFiles != null && archiveFiles.All(x => x.GetInstalledStatus() || (!modsData.useTopLevelFiles && x.isTopFile));
+    public bool partiallyInstalled => archiveFiles != null && !installed && archiveFiles.Any(x => x.GetInstalledStatus());
 
     public void CheckIfInstalled() {
         CheckIfInstalled(null, CancellationToken.None);
@@ -75,15 +78,15 @@ public class ModInfo {
         get {
             string textValue = "";
             if (installed) {
-                textValue = "Installed";
+                textValue = Lang.T("Installed");
             } else if (partiallyInstalled) {
-                textValue = archiveFiles.Any(x => x.installedNotMatching) ? "Conflicting" : "Partial";
+                textValue = archiveFiles.Any(x => x.installedNotMatching) ? Lang.T("Conflicting") : Lang.T("Partial");
             } else {
-                textValue = "Not Installed";
+                textValue = Lang.T("Not Installed");
             }
 
             if (!archiveExists)
-                textValue = "No Archive - " + textValue;
+                textValue = Lang.T("No Archive - ") + textValue;
 
             return textValue;
         }
@@ -94,6 +97,8 @@ public class ModInfo {
     public IEnumerable<ModInfo> FindModsThatChangeSameFiles() {
         List<ModInfo> mods = new List<ModInfo>();
 
+        if (archiveFiles == null) return mods;
+
         foreach (var file in archiveFiles) {
             mods.AddRange(file.FindModsWithSameFile());
         }
@@ -103,14 +108,14 @@ public class ModInfo {
 
     public void SetInfo(RichTextBox textBox) {
         textBox.Clear();
-        textBox.AppendText("Path: "); textBox.AppendText(shortPath, archiveExists ? Color.LawnGreen : Color.Tomato, true);
+        textBox.AppendText(Lang.T("Path: ")); textBox.AppendText(shortPath, archiveExists ? Color.LawnGreen : Color.Tomato, true);
 
-        textBox.AppendText("Size: "); textBox.AppendText(sizeSuffixed, Color.Teal, true);
+        textBox.AppendText(Lang.T("Size: ")); textBox.AppendText(sizeSuffixed, Color.Teal, true);
 
 
         var sameMods = FindModsThatChangeSameFiles();
         if (sameMods.Count() > 0) {
-            textBox.AppendText("Mods that change files also included in this archive: \n");
+            textBox.AppendText(Lang.T("Mods that change files also included in this archive: \n"));
 
             foreach (var mod in sameMods) {
                 textBox.AppendText(mod.shortPath, Color.Orange, true);
