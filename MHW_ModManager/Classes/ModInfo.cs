@@ -3,6 +3,7 @@ using System.IO;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Windows.Forms;
 using System.Drawing;
 
@@ -57,8 +58,16 @@ public class ModInfo {
     public bool partiallyInstalled => !installed && archiveFiles.Any(x => x.GetInstalledStatus());
 
     public void CheckIfInstalled() {
+        CheckIfInstalled(null, CancellationToken.None);
+    }
+
+    // crcMemo: optional dictionary shared across mods for one whole
+    // operation, so a path shared by several mods is hashed only once
+    // per pass. Unchanged files are not re-hashed at all (CrcCache).
+    public void CheckIfInstalled(IDictionary<string, uint> crcMemo, CancellationToken token) {
         foreach (var file in archiveFiles.Where(x => !x.parent)) {
-            file.GetInstalled();
+            token.ThrowIfCancellationRequested();
+            file.GetInstalled(crcMemo, token);
         }
     }
 

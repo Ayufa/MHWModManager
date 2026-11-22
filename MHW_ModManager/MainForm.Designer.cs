@@ -68,6 +68,10 @@
             this.textBoxModFolder = new System.Windows.Forms.TextBox();
             this.label1 = new System.Windows.Forms.Label();
             this.tip = new System.Windows.Forms.ToolTip(this.components);
+            this.panelProgress = new System.Windows.Forms.Panel();
+            this.progressBarOperation = new System.Windows.Forms.ProgressBar();
+            this.labelProgress = new System.Windows.Forms.Label();
+            this.buttonCancelOperation = new System.Windows.Forms.Button();
             this.topPanel = new DraggablePanel();
             this.button2 = new System.Windows.Forms.Button();
             this.button1 = new System.Windows.Forms.Button();
@@ -95,6 +99,7 @@
             this.panel1.SuspendLayout();
             this.panel2.SuspendLayout();
             this.panel3.SuspendLayout();
+            this.panelProgress.SuspendLayout();
             this.topPanel.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -790,6 +795,48 @@
             this.labelTitle.Text = "MHW Mod Manager V1.40 - By: BoltMan";
             this.labelTitle.TextAlign = System.Drawing.ContentAlignment.BottomLeft;
             // 
+            // panelProgress
+            // 
+            this.panelProgress.Controls.Add(this.progressBarOperation);
+            this.panelProgress.Controls.Add(this.labelProgress);
+            this.panelProgress.Controls.Add(this.buttonCancelOperation);
+            this.panelProgress.Dock = System.Windows.Forms.DockStyle.Bottom;
+            this.panelProgress.Location = new System.Drawing.Point(3, 755);
+            this.panelProgress.Name = "panelProgress";
+            this.panelProgress.Size = new System.Drawing.Size(1470, 28);
+            this.panelProgress.TabIndex = 3;
+            this.panelProgress.Visible = false;
+            // 
+            // progressBarOperation
+            // 
+            this.progressBarOperation.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.progressBarOperation.Location = new System.Drawing.Point(500, 0);
+            this.progressBarOperation.Name = "progressBarOperation";
+            this.progressBarOperation.Size = new System.Drawing.Size(890, 28);
+            this.progressBarOperation.TabIndex = 0;
+            // 
+            // labelProgress
+            // 
+            this.labelProgress.Dock = System.Windows.Forms.DockStyle.Left;
+            this.labelProgress.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.labelProgress.Location = new System.Drawing.Point(0, 0);
+            this.labelProgress.Name = "labelProgress";
+            this.labelProgress.Size = new System.Drawing.Size(500, 28);
+            this.labelProgress.TabIndex = 1;
+            this.labelProgress.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            // 
+            // buttonCancelOperation
+            // 
+            this.buttonCancelOperation.Dock = System.Windows.Forms.DockStyle.Right;
+            this.buttonCancelOperation.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.buttonCancelOperation.Location = new System.Drawing.Point(1390, 0);
+            this.buttonCancelOperation.Name = "buttonCancelOperation";
+            this.buttonCancelOperation.Size = new System.Drawing.Size(80, 28);
+            this.buttonCancelOperation.TabIndex = 2;
+            this.buttonCancelOperation.Text = "Cancel";
+            this.buttonCancelOperation.UseVisualStyleBackColor = true;
+            this.buttonCancelOperation.Click += new System.EventHandler(this.buttonCancelOperation_Click);
+            // 
             // MainForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -800,6 +847,7 @@
             this.Controls.Add(this.panel3);
             this.Controls.Add(this.panel1);
             this.Controls.Add(this.topPanel);
+            this.Controls.Add(this.panelProgress);
             this.DoubleBuffered = true;
             this.ForeColor = System.Drawing.Color.WhiteSmoke;
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
@@ -830,6 +878,7 @@
             this.panel2.ResumeLayout(false);
             this.panel3.ResumeLayout(false);
             this.panel3.PerformLayout();
+            this.panelProgress.ResumeLayout(false);
             this.topPanel.ResumeLayout(false);
             this.topPanel.PerformLayout();
             this.ResumeLayout(false);
@@ -839,6 +888,10 @@
     #endregion
 
     private DraggablePanel topPanel;
+    private System.Windows.Forms.Panel panelProgress;
+    private System.Windows.Forms.ProgressBar progressBarOperation;
+    private System.Windows.Forms.Label labelProgress;
+    private System.Windows.Forms.Button buttonCancelOperation;
     private PassThroughLabel labelTitle;
     private System.Windows.Forms.Button button2;
     private System.Windows.Forms.Button button1;

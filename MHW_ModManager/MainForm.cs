@@ -5,6 +5,7 @@ using System.Data;
 using System.Drawing;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.IO;
@@ -16,10 +17,96 @@ using System.Runtime.InteropServices;
 public partial class MainForm : Form {
 
 
-    public const float programVersion = 1.45f;
+    public const float programVersion = 1.46f;
 
     public static MainForm instance;
     public ModsData modsData;
+
+    // --- Background operation plumbing (large-mod optimisation) ---
+    // Archive scanning / installing / uninstalling / CRC re-checks used to
+    // run entirely on the UI thread, so Windows marked the window
+    // "Not Responding" on large mods. They now run on a worker thread via
+    // RunOperationAsync, with throttled progress and cancellation.
+    CancellationTokenSource opCts;
+    bool opRunning;
+    long lastProgressUiMs;
+
+    // Runs `action` on the UI thread (blocking) when called from a worker.
+    public static void RunOnUi(Action action) {
+        if (instance == null) { action(); return; }
+        if (instance.InvokeRequired)
+            instance.Invoke(action);
+        else
+            action();
+    }
+
+    // Thread-safe append to the mod info box (ArchiveManager calls this
+    // from worker threads).
+    public static void AppendModLog(string text, Color color, bool addNewLine) {
+        RunOnUi(() => instance.richBoxMod.AppendText(text, color, addNewLine));
+    }
+
+    async Task RunOperationAsync(string operationName, Action<IProgress<OperationProgress>, CancellationToken> work) {
+        if (opRunning) return;
+        opRunning = true;
+        opCts = new CancellationTokenSource();
+        SetOperationUi(operationName, true);
+
+        var progress = new Progress<OperationProgress>(ReportProgress);
+        try {
+            await Task.Run(() => work(progress, opCts.Token));
+        } catch (OperationCanceledException) {
+            AppendModLog(operationName + " cancelled.", Color.Orange, true);
+        } catch (Exception ex) {
+            Console.WriteLine(ex);
+            AppendModLog(operationName + " failed: " + ex.Message, Color.Crimson, true);
+        } finally {
+            SetOperationUi(operationName, false);
+            opRunning = false;
+            opCts.Dispose();
+            opCts = null;
+        }
+    }
+
+    void ReportProgress(OperationProgress value) {
+        // Second throttle layer on the UI side (~50 ms) so the progress
+        // bar never becomes its own bottleneck.
+        long now = Environment.TickCount;
+        if (now - lastProgressUiMs < 50 && value.Percent < 100) return;
+        lastProgressUiMs = now;
+
+        progressBarOperation.Maximum = Math.Max(1, value.FilesTotal);
+        progressBarOperation.Value = Math.Min(progressBarOperation.Maximum, value.FilesDone);
+        labelProgress.Text = value.FilesTotal > 0
+            ? $"{value.Operation}: {value.FilesDone} / {value.FilesTotal} files  {value.CurrentFile}"
+            : $"{value.Operation}: {value.CurrentFile}";
+    }
+
+    void SetOperationUi(string operationName, bool running) {
+        panelProgress.Visible = running;
+        if (running) {
+            progressBarOperation.Value = 0;
+            labelProgress.Text = operationName + "...";
+        }
+        buttonInstallSelected.Enabled = !running;
+        buttonUninstallSelected.Enabled = !running;
+        buttonRescanCache.Enabled = !running;
+        buttonRescanInstall.Enabled = !running;
+        buttonCheckAll.Enabled = !running;
+        buttonUncheckAll.Enabled = !running;
+    }
+
+    private void buttonCancelOperation_Click(object sender, EventArgs e) {
+        if (opCts != null) opCts.Cancel();
+    }
+
+    // Overwrite prompt that marshals the modal dialog to the UI thread
+    // while the install itself runs in the background.
+    OverwriteDecision PromptOverwriteOnUi(ArchiveFile file, int index, int fileCount) {
+        OverwriteDecision decision = OverwriteDecision.Skip;
+        RunOnUi(() => { decision = ArchiveManager.ShowOverwriteDialog(file, index, fileCount); });
+        return decision;
+    }
 
     public MainForm() {
         instance = this;
@@ -64,8 +151,9 @@ public partial class MainForm : Form {
         modsData.modDir = textBoxModFolder.Text;
     }
 
-    private void Form1_Shown(object sender, EventArgs e) {
-        ModCache.RescanModCacheFolder();
+    private async void Form1_Shown(object sender, EventArgs e) {
+        await RunOperationAsync("Scanning mod cache", (progress, token) =>
+            ModCache.RescanModCacheFolder(progress, token));
         RefreshListView();
 
         GetSelectedMod();
@@ -261,25 +349,34 @@ public partial class MainForm : Form {
     }
 
 
-    private void buttonRescanCache_Click(object sender, EventArgs e) {
-        ModCache.RescanModCacheFolder();
+    private async void buttonRescanCache_Click(object sender, EventArgs e) {
+        await RunOperationAsync("Scanning mod cache", (progress, token) =>
+            ModCache.RescanModCacheFolder(progress, token));
 
         olvModList.Refresh();
         RefreshTreeView();
         RefreshListView();
     }
 
-    private void buttonRescanInstall_Click(object sender, EventArgs e) {
-        buttonRescanInstall.Text = "Scanning...";
-        buttonRescanInstall.Refresh();
+    private async void buttonRescanInstall_Click(object sender, EventArgs e) {
+        await RunOperationAsync("Re-scanning installations", (progress, token) => {
+            ModCache.ReCheckMods(modsData.modInfos, token);
 
-        ModCache.ReCheckMods(modsData.modInfos);
-
-        foreach (var mod in modsData.modInfos) {
-            mod.CheckIfInstalled();
-        }
-
-        buttonRescanInstall.Text = "Re-Scan Installations";
+            // One CRC memo shared by every mod in this pass: a file shared
+            // by several mods is hashed once, and unchanged files are
+            // served from the stamp-validated CrcCache instead of disk.
+            var crcMemo = new Dictionary<string, uint>(StringComparer.OrdinalIgnoreCase);
+            int done = 0;
+            foreach (var mod in modsData.modInfos) {
+                token.ThrowIfCancellationRequested();
+                mod.CheckIfInstalled(crcMemo, token);
+                done++;
+                ((IProgress<OperationProgress>)progress).Report(new OperationProgress {
+                    Operation = "Re-scanning installations", CurrentFile = mod.modName,
+                    FilesDone = done, FilesTotal = modsData.modInfos.Count
+                });
+            }
+        });
 
         SaveData();
 
@@ -315,7 +412,7 @@ public partial class MainForm : Form {
         e.Effect = DragDropEffects.Move;
     }
 
-    private void olvModList_DragDrop(object sender, DragEventArgs e) {
+    private async void olvModList_DragDrop(object sender, DragEventArgs e) {
         string modCacheFolder = Serializer.GetModsCacheFolder();
         Directory.CreateDirectory(modCacheFolder);
 
@@ -343,7 +440,8 @@ public partial class MainForm : Form {
 
         }
 
-        ModCache.RescanModCacheFolder();
+        await RunOperationAsync("Scanning mod cache", (progress, token) =>
+            ModCache.RescanModCacheFolder(progress, token));
 
         if (lastAdded != null) {
             olvModList.SelectedObject = modsData.modInfos.FindLast(x => x.modPath.ToLower() == lastAdded.ToLower());
@@ -385,20 +483,23 @@ public partial class MainForm : Form {
         RefreshListView();
     }
 
-    private void uninstallAllFilesToolStripMenuItem_Click(object sender, EventArgs e) {
+    private async void uninstallAllFilesToolStripMenuItem_Click(object sender, EventArgs e) {
         ModInfo selMod = GetSelectedMod();
         if (!selMod) return;
 
-        ArchiveManager.UninstallSelected(selMod);
+        await RunOperationAsync("Uninstalling", (progress, token) =>
+            ArchiveManager.UninstallSelected(selMod, true, false, progress, token));
     }
 
-    private void installAllFilesToolStripMenuItem_Click(object sender, EventArgs e) {
+    private async void installAllFilesToolStripMenuItem_Click(object sender, EventArgs e) {
         ModInfo selMod = GetSelectedMod();
         if (!selMod) return;
 
         buttonCheckAll_Click(null, null);
-        ArchiveManager.InstallSelected(selMod);
-        ArchiveManager.DeleteEmptyDirs(Serializer.GetGameModFolder());
+        await RunOperationAsync("Installing", (progress, token) =>
+            ArchiveManager.InstallSelected(selMod, true, progress, token, PromptOverwriteOnUi));
+        if (Directory.Exists(Serializer.GetGameModFolder()))
+            ArchiveManager.DeleteEmptyDirs(Serializer.GetGameModFolder());
     }
 
     private void olvModList_AfterSorting(object sender, BrightIdeasSoftware.AfterSortingEventArgs e) {
@@ -407,19 +508,22 @@ public partial class MainForm : Form {
             olvModList.EnsureModelVisible(obj);
     }
 
-    private void buttonUninstallSelected_Click(object sender, EventArgs e) {
+    private async void buttonUninstallSelected_Click(object sender, EventArgs e) {
         ModInfo selMod = GetSelectedMod();
         if (!selMod) return;
 
-        ArchiveManager.UninstallSelected(selMod);
-        ArchiveManager.DeleteEmptyDirs(Serializer.GetGameModFolder());
+        await RunOperationAsync("Uninstalling", (progress, token) =>
+            ArchiveManager.UninstallSelected(selMod, true, false, progress, token));
+        if (Directory.Exists(Serializer.GetGameModFolder()))
+            ArchiveManager.DeleteEmptyDirs(Serializer.GetGameModFolder());
     }
 
-    private void buttonInstallSelected_Click(object sender, EventArgs e) {
+    private async void buttonInstallSelected_Click(object sender, EventArgs e) {
         ModInfo selMod = GetSelectedMod();
         if (!selMod) return;
 
-        ArchiveManager.InstallSelected(selMod);
+        await RunOperationAsync("Installing", (progress, token) =>
+            ArchiveManager.InstallSelected(selMod, true, progress, token, PromptOverwriteOnUi));
     }
 
     private void buttonUncheckAll_Click(object sender, EventArgs e) {
@@ -462,11 +566,12 @@ public partial class MainForm : Form {
         RefreshListView();
     }
 
-    private void reloadArchiveToolStripMenuItem_Click(object sender, EventArgs e) {
+    private async void reloadArchiveToolStripMenuItem_Click(object sender, EventArgs e) {
         ModInfo selMod = GetSelectedMod();
         if (!selMod) return;
 
-        ModCache.ReCheckMods(new ModInfo[] { selMod });
+        await RunOperationAsync("Reloading archive", (progress, token) =>
+            ModCache.ReCheckMods(new ModInfo[] { selMod }, token));
 
         RefreshListView();
         RefreshTreeView();

@@ -4,6 +4,7 @@ using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -27,19 +28,46 @@ public class ArchiveFile {
     public bool isTopFile => !isDir && (!parent || (parent.isTopFolder && parent.children.Any(x => x.isDir)));
     public bool isTopFolder => isDir && !parent;
 
+    // Cached results of GetDirectPath()/installedPath. These were recomputed
+    // (with several full-string ToLower() copies) on *every* access, and they
+    // are accessed inside the hottest loops in the program (per file, per mod).
+    // NonSerialized: not part of the save format.
+    [NonSerialized] string _directPathCache;
+    [NonSerialized] string _directPathModDir;
+    [NonSerialized] string _installedPathCache;
+
     public bool installed = false;
     public uint installedCRC;
     public bool installedNotMatching => installed && installedCRC != crc;
 
     public string GetDirectPath() {
-        if(path.ToLower().FixSlashes() == modsData.modDir.ToLower().FixSlashes())
-            return "";
-        
-        int idxModFolder = path.ToLower().IndexOf(modsData.modDir.ToLower());
-        int subIdx = idxModFolder + modsData.modDir.Length + 1;
-        return idxModFolder < 0 || subIdx > path.Length ? path : path.Substring(subIdx);
+        string modDir = modsData.modDir;
+        if (_directPathCache != null && _directPathModDir == modDir)
+            return _directPathCache;
+
+        string result;
+        if (string.Equals(path.FixSlashes(), modDir.FixSlashes(), StringComparison.OrdinalIgnoreCase)) {
+            result = "";
+        } else {
+            // Case-insensitive IndexOf: same semantics as the old
+            // path.ToLower().IndexOf(modDir.ToLower()) without the allocations.
+            int idxModFolder = path.IndexOf(modDir, StringComparison.OrdinalIgnoreCase);
+            int subIdx = idxModFolder + modDir.Length + 1;
+            result = idxModFolder < 0 || subIdx > path.Length ? path : path.Substring(subIdx);
+        }
+
+        _directPathCache = result;
+        _directPathModDir = modDir;
+        _installedPathCache = null;
+        return result;
     }
-    public string installedPath => $"{modBelong.gameModDir}\\{GetDirectPath()}";
+    public string installedPath {
+        get {
+            if (_installedPathCache == null)
+                _installedPathCache = $"{modBelong.gameModDir}\\{GetDirectPath()}";
+            return _installedPathCache;
+        }
+    }
 
     public bool GetInstalledStatus() {
         if (isDir) {
@@ -50,46 +78,87 @@ public class ArchiveFile {
     }
 
     public void GetInstalled() {
+        GetInstalled(null, CancellationToken.None);
+    }
+
+    // crcMemo (optional, shared by the caller for a whole operation) makes
+    // sure the same installed path is hashed at most once per pass, and
+    // CrcCache additionally skips re-hashing files whose size+mtime are
+    // unchanged since the last check.
+    public void GetInstalled(IDictionary<string, uint> crcMemo, CancellationToken token) {
         if (isDir) {
             foreach (var child in children) {
-                child.GetInstalled();
+                token.ThrowIfCancellationRequested();
+                child.GetInstalled(crcMemo, token);
             }
             installed = children.All(x => x.installed);
         } else {
             if (installed = File.Exists(installedPath)) {
-                installedCRC = GetInstalledCRC();
+                installedCRC = crcMemo != null
+                    ? CrcCache.GetCrc(installedPath, crcMemo)
+                    : CrcCache.GetCrc(installedPath);
             }
         }
     }
 
     public uint GetInstalledCRC() {
-        var crc32 = new Crc32();
-        var hash = string.Empty;
-        using (var fs = File.OpenRead(installedPath)) {
-            return BitConverter.ToUInt32(crc32.ComputeHash(fs).Reverse().ToArray(), 0);
-        }
+        return CrcCache.GetCrc(installedPath);
     }
 
     public List<ModInfo> FindModsWithSameFile() {
+        return FindModsWithSameFile(null, null);
+    }
+
+    // Indexed variant: `sameFileIndex` maps installedPath (case-insensitive)
+    // to the mods containing a file with that path, and `crcIndex` maps a
+    // file CRC to the mods containing a file with that CRC. Both are built
+    // once per operation by ArchiveManager.BuildModFileIndexes(). The old
+    // implementation rescanned *all mods x all their files* (with a ToLower()
+    // allocation per comparison) for *every single file* -- O(mods x files^2)
+    // overall, which is what made large installs crawl.
+    public List<ModInfo> FindModsWithSameFile(IDictionary<string, List<ModInfo>> sameFileIndex,
+                                              IDictionary<uint, List<ModInfo>> crcIndex) {
         List<ModInfo> sameMods = new List<ModInfo>();
 
         if (!isDir) {
-            foreach (var otherMod in modsData.modInfos) {
-                if (otherMod == modBelong) continue;
+            if (sameFileIndex != null) {
+                List<ModInfo> hits;
+                if (sameFileIndex.TryGetValue(installedPath, out hits)) {
+                    foreach (var otherMod in hits) {
+                        if (otherMod == modBelong) continue;
+                        // Preserve the original top-level-file filter.
+                        if (otherMod.archiveFiles.Any(file => !file.isDir && (!file.isTopFile || modsData.useTopLevelFiles)
+                                && string.Equals(file.installedPath, installedPath, StringComparison.OrdinalIgnoreCase)))
+                            sameMods.Add(otherMod);
+                    }
+                }
+            } else {
+                foreach (var otherMod in modsData.modInfos) {
+                    if (otherMod == modBelong) continue;
 
-                if (otherMod.archiveFiles.Any(file => !file.isDir && (!file.isTopFile || modsData.useTopLevelFiles) && file.installedPath.ToLower() == installedPath.ToLower())) {
-                    sameMods.Add(otherMod);
+                    if (otherMod.archiveFiles.Any(file => !file.isDir && (!file.isTopFile || modsData.useTopLevelFiles) && file.installedPath.ToLower() == installedPath.ToLower())) {
+                        sameMods.Add(otherMod);
+                    }
                 }
             }
         }
 
-        sameMods.AddRange(FindActualCrcMod());
+        sameMods.AddRange(FindActualCrcMod(crcIndex));
 
         return sameMods;
     }
 
     public IEnumerable<ModInfo> FindActualCrcMod() {
+        return FindActualCrcMod(null);
+    }
+
+    public IEnumerable<ModInfo> FindActualCrcMod(IDictionary<uint, List<ModInfo>> crcIndex) {
         if (!installedNotMatching) return new ModInfo[0];
+
+        if (crcIndex != null) {
+            List<ModInfo> hits;
+            return crcIndex.TryGetValue(installedCRC, out hits) ? hits : (IEnumerable<ModInfo>)new ModInfo[0];
+        }
 
         return modsData.modInfos.Where(mod => mod.archiveFiles.Any(file => file.crc == installedCRC));
     }
