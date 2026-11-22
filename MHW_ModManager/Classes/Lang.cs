@@ -61,6 +61,8 @@ public static class Lang {
         { "Scan through the mod install folder and check the files against the mod cache.", "インストール先フォルダをスキャンして、MODキャッシュと照合します。" },
         { "When enabled, files at the root of the archive will be ignored. This is good for ignoring files like Readme's that arent in any folders.",
           "有効にすると、アーカイブ直下のファイルを無視します。フォルダに入っていない Readme などを無視するのに便利です。" },
+        { "Game folder (MonsterHunterWorld.exe found)", "ゲームフォルダです（MonsterHunterWorld.exe が見つかりました）" },
+        { "Not a game folder (MonsterHunterWorld.exe not found)", "ゲームフォルダではありません（MonsterHunterWorld.exe が見つかりません）" },
         { "Saves the current state of your installed mods to a file\nso you can load it later after changing up your mod list.\nThis is good is good for if you have a certain set of mods that you\nonly want to use sometimes or whatever other purpose you can think of.",
           "現在のMODの状態をファイルに保存します。\nMOD一覧を変えた後に読み込んで戻せます。\nたまにだけ使うMODの組み合わせなどを保存しておくのに便利です。" },
         { "This simply loads the state of your mods from a previously saved loadout file.\r\nIt will give appropriate warnings if new mods have been added or if some archives are missing.",

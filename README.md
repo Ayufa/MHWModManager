@@ -4,6 +4,11 @@ A simple to use (hopefully) robust generic mod management tool for managing the 
 
 **This repository is an optimized copy of [UncleClapton/MHWModManager](https://github.com/UncleClapton/MHWModManager)** (originally created by BoltMan / BoltTheMan, Nexus Mods mod 372), focused on one problem: **installing large mods — many files and/or large total size — used to take very long or make the window appear to freeze ("Not Responding")**. The original code is MIT licensed (see [LICENSE](LICENSE)); all credit for the original program goes to its authors.
 
+## What's new in v1.48
+
+- **Bug fix — any existing folder was accepted as the game folder**: the Game Directory check only tested that the folder exists, so an unrelated folder (Desktop, Downloads, ...) got the green ✓ and was adopted as the install target. A folder now only counts as the game folder when it **directly contains `MonsterHunterWorld.exe`** (case-insensitive, no subfolder search). The ✓/✗ mark now has a tooltip explaining the result ("Game folder (MonsterHunterWorld.exe found)" / "Not a game folder (MonsterHunterWorld.exe not found)"). An invalid path is never adopted: the previously saved game folder stays in effect, exactly as before. Save-data format is unchanged.
+- **修正 — 存在するフォルダなら何でもゲームフォルダとして認識されていた問題**：ゲームフォルダの判定が「フォルダが存在するか」だけだったため、無関係なフォルダ（デスクトップやダウンロード等）でも緑の✓が付いてインストール先に採用されてしまいました。今後はフォルダの**直下に `MonsterHunterWorld.exe` がある場合のみ**ゲームフォルダとして認識します（大文字小文字は区別なし、サブフォルダは対象外）。✓/✗に理由のツールチップも追加。無効なパスは今まで通り採用されず、前回のゲームフォルダが維持されます。セーブデータ形式は変更なし。
+
 ## What's new in v1.47
 
 - **Japanese UI (日本語)**: a **Language selector** in the "Mod Folder" row at the top of the window (right side, next to the Loadout buttons) switches the whole UI between **English** and **日本語** — instantly, no restart needed. The choice is saved in the app's user settings (`UILanguage`) and restored on the next launch. On first run, Japanese is preselected on a Japanese Windows; English otherwise. Mod/file names and paths are never translated. Save-data format (`mods.db`) is unchanged.

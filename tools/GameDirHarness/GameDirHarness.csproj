@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>disable</Nullable>
+    <AssemblyName>gamedirharness</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- The REAL helper from the app, compiled in; not a re-implementation. -->
+    <Compile Include="..\..\MHW_ModManager\Classes\GameDirValidator.cs" Link="GameDirValidator.cs" />
+  </ItemGroup>
+</Project>

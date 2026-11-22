@@ -249,6 +249,7 @@
     <Compile Include="Classes\ArchiveFile.cs" />
     <Compile Include="Classes\ArchiveManager.cs" />
     <Compile Include="Classes\CrcCache.cs" />
+    <Compile Include="Classes\GameDirValidator.cs" />
     <Compile Include="Classes\Lang.cs" />
     <Compile Include="Classes\OperationProgress.cs" />
     <Compile Include="Classes\LoadoutManager.cs" />

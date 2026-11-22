@@ -186,6 +186,10 @@ public partial class MainForm : Form {
 
         foreach (var pair in originalToolTips)
             tip.SetToolTip(pair.Key, Lang.T(pair.Value));
+
+        // The game-folder ✓/X tooltip follows the current validation
+        // state and the newly applied language.
+        UpdateGameDirToolTip();
     }
 
 
@@ -485,8 +489,22 @@ public partial class MainForm : Form {
 
 
     //✔ ✓
+    // v1.48: a folder only counts as the game folder when it directly
+    // contains MonsterHunterWorld.exe (GameDirValidator). Before, any
+    // existing folder got the green check and was adopted as gameDir.
+    // Invalid input still does NOT touch modsData.gameDir, so a typo or a
+    // pasted wrong path never retargets installs away from the last valid
+    // game folder.
+    bool gameDirValid;
+    void UpdateGameDirToolTip() {
+        tip.SetToolTip(labelGameDirExists, Lang.T(gameDirValid
+            ? "Game folder (MonsterHunterWorld.exe found)"
+            : "Not a game folder (MonsterHunterWorld.exe not found)"));
+    }
+
     private void textBoxGameDir_TextChanged(object sender, EventArgs e) {
-        if (Directory.Exists(textBoxGameDir.Text)) {
+        gameDirValid = GameDirValidator.IsGameDirectory(textBoxGameDir.Text);
+        if (gameDirValid) {
             labelGameDirExists.ForeColor = Color.LawnGreen;
             labelGameDirExists.Text = "✓";
             modsData.gameDir = textBoxGameDir.Text;
@@ -494,6 +512,7 @@ public partial class MainForm : Form {
             labelGameDirExists.ForeColor = Color.Tomato;
             labelGameDirExists.Text = "X";
         }
+        UpdateGameDirToolTip();
     }
 
 
